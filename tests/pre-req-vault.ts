@@ -88,7 +88,7 @@ describe("pre-req-vault", () => {
       })
       .rpc();
 
-    confirmTx(tx);
+    await confirmTx(tx);
 
     const finalBalanceVault = await provider.connection.getBalance(vaultPda);
     const finalBalanceUser = await provider.connection.getBalance(user);
@@ -99,6 +99,10 @@ describe("pre-req-vault", () => {
 
   it(" Withdraw 0.5 Sol from the vault", async () => {
     const withdrawAmount = 0.5 * LAMPORTS_PER_SOL;
+    const githubId = process.env.GITHUB_USERNAME;
+    if (!githubId) {
+      throw new Error("Set GITHUB_USERNAME to your GitHub username before running the devnet test");
+    }
 
     const initialVaultBalance = await provider.connection.getBalance(vaultPda);
     const intialUserBalance = await provider.connection.getBalance(user);
@@ -113,7 +117,7 @@ describe("pre-req-vault", () => {
     )[0];
 
     const tx = await program.methods
-      .withdraw(new BN(withdrawAmount))
+      .withdraw(new BN(withdrawAmount), githubId)
       .accountsStrict({
         user: user,
         vaultState: vaultStatePda,
@@ -124,13 +128,17 @@ describe("pre-req-vault", () => {
       })
       .rpc();
 
-    confirmTx(tx);
+    await confirmTx(tx);
 
     const finalBalanceVault = await provider.connection.getBalance(vaultPda);
     const finalBalanceUser = await provider.connection.getBalance(user);
 
     expect(finalBalanceVault).to.equal(initialVaultBalance - withdrawAmount);
     expect(finalBalanceUser).to.be.greaterThan(intialUserBalance);
+
+    const registrationInfo = await provider.connection.getAccountInfo(applicationAccount);
+    expect(registrationInfo).to.not.be.null;
+    expect(registrationInfo!.data.includes(Buffer.from(githubId))).to.equal(true);
   });
 
   it(" Close the vault and withdraw all the funds", async () => {
@@ -146,7 +154,7 @@ describe("pre-req-vault", () => {
       })
       .rpc();
 
-    confirmTx(tx);
+    await confirmTx(tx);
 
     expect(await provider.connection.getBalance(vaultPda)).to.equal(0);
 
